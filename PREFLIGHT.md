@@ -1,40 +1,9 @@
-# TradeProof verification and release gates
+# Verification and release gates
 
-This is a development prototype. No compiler output, Fe `fe test` results, or GitHub CI results are claimed in this offline package.
+The public Ubuntu GitHub Actions workflow installs Fe v26.5.0 and executes `fe --version`, `fe test`, `fe build`, and **required** `fe fmt --check`. The initial passing formatted-source commit was `52c1a7296fee56863ae27b96c8c65401269db1db`; confirm that each later judged SHA is also green: https://github.com/Precision2025/tradeproof-fe-builders-challenge-2026/actions .
 
-## Gate A — local static packaging check (not a substitute for Fe)
+Local `python3 tools/preflight.py` checks file structure, test declarations, basic access guards and inadvertent secret leakage; it cannot substitute for compilation or security review.
 
-Run `python3 tools/preflight.py` to confirm all expected files are present, test declarations exist, public source has no private contest submission token, and the manifest is readable.
+Contest handoff: use a public Apache-2.0 repo, exact passing full SHA, Fe version and manifest, README, [DEMO.md](DEMO.md), tests, technical pitch, and AI disclosure. Submit through the *private* organizer link from FE-049 registration and await acceptance email. The form receipt does not prove acceptance.
 
-## Gate B — compiler and test results (REQUIRED)
-
-In an Ubuntu GitHub Actions runner with internet access, `fe 26.5.0`:
-
-```sh
-fe --version
-fe fmt
-fe fmt --check
-fe test
-fe build
-```
-
-Do not mark test gates passed until all finish successfully. If formatting changes source files, commit the formatting and rerun CI on the final SHA.
-
-## Gate C — publication and contest entry (REQUIRED)
-
-1. Publish to a new public repository under the authorized entrant's GitHub account, not an existing business app repository.
-2. Review and fix compiler errors, test failures, and security limitations; do not deploy real ETH.
-3. Record the exact full 40-character tested commit SHA and public URL.
-4. Submit the organizer's *private* submission link (from registration email) with the full SHA and reproducibility instructions.
-5. Check organizer's acceptance email. A form receipt is not acceptance.
-
-## Security design and limitations
-
-- No personal customer details, photos, signatures, addresses, or real-world work-order IDs stored on chain.
-- Only the nominated worker can file evidence; only the nominated customer can approve it.
-- Release requires customer approval of exactly the worker's evidence hash. Nonces reject stale operations.
-- Payment release and refunds zero balances before external calls.
-- Early refunds remain possible before on-chain completion. In a real service workflow, this could let a payer cancel after off-chain work is done; contractual and arbitration protections are missing.
-- No deadline/dispute-resolution mechanism; funds can remain locked after a worker reports completion.
-- Tests currently use the same EVM actor for multiple roles in successful flow; true separate-caller integration tests are essential before any production use.
-- Smart-contract deployment to live funds is **not approved** and is not necessary for judging.
+Prototype boundaries: no deployment with real funds, no dispute arbitration/timeouts, possible early refund after off-chain work, and no independent multi-actor tests or code audit.

@@ -36,14 +36,14 @@ Each payer has at most one active milestone. Closed milestones can be followed b
 ```sh
 curl -fsSL https://raw.githubusercontent.com/argotorg/fe/master/feup/feup.sh | bash -s -- --version v26.5.0
 fe --version
-fe fmt
+fe fmt --check
 fe test
 fe build
 ```
 
 The EVM test suite in `src/tests.fe` checks a complete payout, premature release, wrong evidence, premature approval, stale nonce, double completion, early refund, duplicate active milestones, zero funding, unauthorized completion and approval, late refund, and duplicate settlement.
 
-**Current validation:** These sources were prepared against the Fe 26.5.0 starter syntax, but the Fe compiler is not installed in this offline artifact environment. GitHub Actions runs the Fe compiler on commits; the final test and format gates must pass before this becomes a contest-ready release. The user should not put real money into it.
+**Verified status:** The public GitHub Actions runner has compiled this code with Fe v26.5.0, passed **13/13 simulated EVM tests**, built ABI and bytecode, and enforced `fe fmt --check`. Verify the latest exact commit using [CI](https://github.com/Precision2025/tradeproof-fe-builders-challenge-2026/actions). See [DEMO.md](DEMO.md) for reproducible tests. The code is not audited or production-safe.
 
 ## Fe-specific technical value
 
@@ -70,7 +70,7 @@ The EVM test suite in `src/tests.fe` checks a complete payout, premature release
 - AI assistance: GPT-6 researched the Fe contest and starter, generated the initial contract, tests, README, and CI, and identified initial security limitations. Responsible human entrant: Travis Jackson.
 - Attribution: Fe starter project structure, test patterns and installation commands informed by [`fe-lang/builders-challenge-starter`](https://github.com/fe-lang/builders-challenge-starter) under Apache-2.0.
 - Third-party project dependencies: none beyond the Fe standard library.
-- Final public repository URL, exact commit SHA, reproducible passing CI, and demonstration are **pending**, so this package is an initial prototype, not a final submission.
+- Public repository: [Precision2025/tradeproof-fe-builders-challenge-2026](https://github.com/Precision2025/tradeproof-fe-builders-challenge-2026). Passing CI and a reproducible [demo](DEMO.md) are available. The exact judged SHA is supplied privately in the organizer's form.
 
 ## Contest deadlines
 
