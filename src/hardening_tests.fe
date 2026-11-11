@@ -1,0 +1,246 @@
+// Additional replay, edge-condition, and accounting regression tests.
+// Uses the Fe 26.5.0 isolated EVM. No live funds.
+use ingot::{TradeProof, TradeProofMsg}
+use std::evm::ether
+
+#[test(balance = 10_000_000_000_000_000_000)]
+fn released_milestone_can_reopen_with_next_nonce() uses (evm: mut Evm) {
+    let proof = evm.create2<TradeProof>(value: Wei::zero(), args: (), salt: 0)
+    let payer = evm.address()
+    let nonce: u256 = evm.call(
+        addr: proof, gas: 500000, value: ether(1),
+        message: TradeProofMsg::Open {
+            worker: payer, customer: payer, specification_hash: 1001
+        },
+    )
+    let _: bool = evm.call(
+        addr: proof, gas: 200000, value: Wei::zero(),
+        message: TradeProofMsg::Complete { payer, nonce: nonce, evidence_hash: 2002 },
+    )
+    let _: bool = evm.call(
+        addr: proof, gas: 200000, value: Wei::zero(),
+        message: TradeProofMsg::Approve { payer, nonce: nonce, evidence_hash: 2002 },
+    )
+    let _: Wei = evm.call(
+        addr: proof, gas: 200000, value: Wei::zero(),
+        message: TradeProofMsg::Release { payer, nonce: nonce, to: Address::new(0x1234) },
+    )
+
+    let old_nonce = nonce
+    let next_nonce: u256 = evm.call(
+        addr: proof, gas: 500000, value: ether(2),
+        message: TradeProofMsg::Open {
+            worker: payer, customer: payer, specification_hash: 3003
+        },
+    )
+    assert!(old_nonce == 1)
+    assert!(next_nonce == 2)
+    let stored: u256 = evm.call(addr: proof, gas: 100000, value: Wei::zero(),
+        message: TradeProofMsg::NonceOf { payer })
+    assert!(stored == 2)
+    let amount: Wei = evm.call(addr: proof, gas: 100000, value: Wei::zero(),
+        message: TradeProofMsg::AmountOf { payer })
+    assert!(amount == ether(2))
+    let spec: u256 = evm.call(addr: proof, gas: 100000, value: Wei::zero(),
+        message: TradeProofMsg::SpecificationOf { payer })
+    assert!(spec == 3003)
+    let evidence: u256 = evm.call(addr: proof, gas: 100000, value: Wei::zero(),
+        message: TradeProofMsg::EvidenceOf { payer })
+    assert!(evidence == 0)
+    assert!(evm.balance(proof) == ether(2))
+}
+
+#[test(balance = 10_000_000_000_000_000_000)]
+fn refunded_milestone_can_reopen_without_reusing_nonce() uses (evm: mut Evm) {
+    let proof = evm.create2<TradeProof>(value: Wei::zero(), args: (), salt: 0)
+    let payer = evm.address()
+    let nonce: u256 = evm.call(
+        addr: proof, gas: 500000, value: ether(1),
+        message: TradeProofMsg::Open {
+            worker: payer, customer: payer, specification_hash: 1001
+        },
+    )
+    let _: Wei = evm.call(
+        addr: proof, gas: 200000, value: Wei::zero(),
+        message: TradeProofMsg::Refund { nonce: nonce, to: Address::new(0x5678) },
+    )
+
+    let next_nonce: u256 = evm.call(
+        addr: proof, gas: 500000, value: ether(2),
+        message: TradeProofMsg::Open {
+            worker: payer, customer: payer, specification_hash: 3003
+        },
+    )
+    assert!(nonce == 1)
+    assert!(next_nonce == 2)
+    let status: u256 = evm.call(addr: proof, gas: 100000, value: Wei::zero(),
+        message: TradeProofMsg::StatusOf { payer })
+    assert!(status == 1)
+    assert!(evm.balance(proof) == ether(2))
+}
+
+#[test(balance = 10_000_000_000_000_000_000)]
+fn escrow_balance_tracks_funding_and_settlement() uses (evm: mut Evm) {
+    let proof = evm.create2<TradeProof>(value: Wei::zero(), args: (), salt: 0)
+    let payer = evm.address()
+    let nonce: u256 = evm.call(
+        addr: proof, gas: 500000, value: ether(1),
+        message: TradeProofMsg::Open {
+            worker: payer, customer: payer, specification_hash: 1001
+        },
+    )
+
+    assert!(evm.balance(proof) == ether(1))
+    let _: bool = evm.call(
+        addr: proof, gas: 200000, value: Wei::zero(),
+        message: TradeProofMsg::Complete { payer, nonce: nonce, evidence_hash: 2002 },
+    )
+    let _: bool = evm.call(
+        addr: proof, gas: 200000, value: Wei::zero(),
+        message: TradeProofMsg::Approve { payer, nonce: nonce, evidence_hash: 2002 },
+    )
+    let _: Wei = evm.call(
+        addr: proof, gas: 200000, value: Wei::zero(),
+        message: TradeProofMsg::Release { payer, nonce: nonce, to: Address::new(0x1234) },
+    )
+
+    assert!(evm.balance(proof) == Wei::zero())
+    assert!(evm.balance(Address::new(0x1234)) == ether(1))
+}
+
+#[test(should_revert, balance = 10_000_000_000_000_000_000)]
+fn refunded_milestone_cannot_refund_twice() uses (evm: mut Evm) {
+    let proof = evm.create2<TradeProof>(value: Wei::zero(), args: (), salt: 0)
+    let payer = evm.address()
+    let nonce: u256 = evm.call(
+        addr: proof, gas: 500000, value: ether(1),
+        message: TradeProofMsg::Open {
+            worker: payer, customer: payer, specification_hash: 1001
+        },
+    )
+    let _: Wei = evm.call(
+        addr: proof, gas: 200000, value: Wei::zero(),
+        message: TradeProofMsg::Refund { nonce: nonce, to: Address::new(0x5678) },
+    )
+    let _: Wei = evm.call(
+        addr: proof, gas: 200000, value: Wei::zero(),
+        message: TradeProofMsg::Refund { nonce: nonce, to: Address::new(0x5678) },
+    )
+}
+
+#[test(should_revert, balance = 10_000_000_000_000_000_000)]
+fn rejects_missing_specification_commitment() uses (evm: mut Evm) {
+    let proof = evm.create2<TradeProof>(value: Wei::zero(), args: (), salt: 0)
+    let payer = evm.address()
+    let nonce: u256 = evm.call(
+        addr: proof, gas: 500000, value: ether(1),
+        message: TradeProofMsg::Open {
+            worker: payer, customer: payer, specification_hash: 0
+        },
+    )
+}
+
+#[test(should_revert, balance = 10_000_000_000_000_000_000)]
+fn rejects_zero_worker_address() uses (evm: mut Evm) {
+    let proof = evm.create2<TradeProof>(value: Wei::zero(), args: (), salt: 0)
+    let payer = evm.address()
+    let nonce: u256 = evm.call(
+        addr: proof, gas: 500000, value: ether(1),
+        message: TradeProofMsg::Open {
+            worker: Address::new(0), customer: payer, specification_hash: 1001
+        },
+    )
+}
+
+#[test(should_revert, balance = 10_000_000_000_000_000_000)]
+fn rejects_zero_customer_address() uses (evm: mut Evm) {
+    let proof = evm.create2<TradeProof>(value: Wei::zero(), args: (), salt: 0)
+    let payer = evm.address()
+    let nonce: u256 = evm.call(
+        addr: proof, gas: 500000, value: ether(1),
+        message: TradeProofMsg::Open {
+            worker: payer, customer: Address::new(0), specification_hash: 1001
+        },
+    )
+}
+
+#[test(should_revert, balance = 10_000_000_000_000_000_000)]
+fn rejects_zero_evidence_hash() uses (evm: mut Evm) {
+    let proof = evm.create2<TradeProof>(value: Wei::zero(), args: (), salt: 0)
+    let payer = evm.address()
+    let nonce: u256 = evm.call(
+        addr: proof, gas: 500000, value: ether(1),
+        message: TradeProofMsg::Open {
+            worker: payer, customer: payer, specification_hash: 1001
+        },
+    )
+    let _: bool = evm.call(
+        addr: proof, gas: 200000, value: Wei::zero(),
+        message: TradeProofMsg::Complete { payer, nonce: nonce, evidence_hash: 0 },
+    )
+}
+
+#[test(should_revert, balance = 10_000_000_000_000_000_000)]
+fn rejects_zero_release_recipient() uses (evm: mut Evm) {
+    let proof = evm.create2<TradeProof>(value: Wei::zero(), args: (), salt: 0)
+    let payer = evm.address()
+    let nonce: u256 = evm.call(
+        addr: proof, gas: 500000, value: ether(1),
+        message: TradeProofMsg::Open {
+            worker: payer, customer: payer, specification_hash: 1001
+        },
+    )
+    let _: bool = evm.call(
+        addr: proof, gas: 200000, value: Wei::zero(),
+        message: TradeProofMsg::Complete { payer, nonce: nonce, evidence_hash: 2002 },
+    )
+    let _: bool = evm.call(
+        addr: proof, gas: 200000, value: Wei::zero(),
+        message: TradeProofMsg::Approve { payer, nonce: nonce, evidence_hash: 2002 },
+    )
+    let _: Wei = evm.call(
+        addr: proof, gas: 200000, value: Wei::zero(),
+        message: TradeProofMsg::Release { payer, nonce: nonce, to: Address::new(0) },
+    )
+}
+
+#[test(should_revert, balance = 10_000_000_000_000_000_000)]
+fn rejects_zero_refund_recipient() uses (evm: mut Evm) {
+    let proof = evm.create2<TradeProof>(value: Wei::zero(), args: (), salt: 0)
+    let payer = evm.address()
+    let nonce: u256 = evm.call(
+        addr: proof, gas: 500000, value: ether(1),
+        message: TradeProofMsg::Open {
+            worker: payer, customer: payer, specification_hash: 1001
+        },
+    )
+    let _: Wei = evm.call(
+        addr: proof, gas: 200000, value: Wei::zero(),
+        message: TradeProofMsg::Refund { nonce: nonce, to: Address::new(0) },
+    )
+}
+
+#[test(should_revert, balance = 10_000_000_000_000_000_000)]
+fn rejects_stale_completion_after_reopening() uses (evm: mut Evm) {
+    let proof = evm.create2<TradeProof>(value: Wei::zero(), args: (), salt: 0)
+    let payer = evm.address()
+    let nonce: u256 = evm.call(
+        addr: proof, gas: 500000, value: ether(1),
+        message: TradeProofMsg::Open {
+            worker: payer, customer: payer, specification_hash: 1001
+        },
+    )
+    let _: Wei = evm.call(
+        addr: proof, gas: 200000, value: Wei::zero(),
+        message: TradeProofMsg::Refund { nonce: nonce, to: Address::new(0x5678) },
+    )
+
+    let _: u256 = evm.call(addr: proof, gas: 500000, value: ether(1),
+        message: TradeProofMsg::Open {
+            worker: payer, customer: payer, specification_hash: 3003 },
+    )
+    let _: bool = evm.call(
+        addr: proof, gas: 200000, value: Wei::zero(),
+        message: TradeProofMsg::Complete { payer, nonce: nonce, evidence_hash: 2002 },
+    )
+}
