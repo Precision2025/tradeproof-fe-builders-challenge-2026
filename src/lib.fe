@@ -128,7 +128,7 @@ pub contract TradeProof uses (ctx: Ctx, call: mut Call, log: mut Log) {
         }
 
         Release { payer, nonce } -> Wei uses (
-            mut statuses, nonces, workers, mut amounts, mut call, mut log
+            ctx, mut statuses, nonces, workers, mut amounts, mut call, mut log
         ) {
             assert!(nonces.get(key: payer) == nonce, "Stale milestone")
             assert!(statuses.get(key: payer) == 3, "Customer approval required")
@@ -138,7 +138,7 @@ pub contract TradeProof uses (ctx: Ctx, call: mut Call, log: mut Log) {
             // Effects before interaction: block reentrant double release.
             amounts.set(key: payer, value: Wei::zero())
             statuses.set(key: payer, value: 4)
-            assert!(call.send_value(addr: recipient, gas: 0, value: amount).success(), "Payment failed")
+            assert!(call.send_value(addr: recipient, gas: ctx.gas(), value: amount).success(), "Payment failed")
             log.emit(MilestoneSettled { payer, nonce, recipient, amount, refunded: false })
             amount
         }
@@ -155,7 +155,7 @@ pub contract TradeProof uses (ctx: Ctx, call: mut Call, log: mut Log) {
             assert!(amount > Wei::zero(), "Nothing to refund")
             amounts.set(key: payer, value: Wei::zero())
             statuses.set(key: payer, value: 5)
-            assert!(call.send_value(addr: payer, gas: 0, value: amount).success(), "Refund failed")
+            assert!(call.send_value(addr: payer, gas: ctx.gas(), value: amount).success(), "Refund failed")
             log.emit(MilestoneSettled { payer, nonce, recipient: payer, amount, refunded: true })
             amount
         }
