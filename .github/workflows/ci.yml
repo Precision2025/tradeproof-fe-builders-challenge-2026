@@ -1,0 +1,23 @@
+name: Fe build and security state-machine tests
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Fe 26.5.0
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/argotorg/fe/master/feup/feup.sh | bash -s -- --version v26.5.0 --no-modify-path
+          echo "$HOME/.fe/bin" >> "$GITHUB_PATH"
+      - name: Version
+        run: fe --version
+      - name: Check formatting
+        run: fe fmt --check
+      - name: Run tests
+        run: fe test
+      - name: Build
+        run: fe build
