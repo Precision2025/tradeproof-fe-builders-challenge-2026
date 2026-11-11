@@ -41,9 +41,9 @@ fe test
 fe build
 ```
 
-The EVM test suite in `src/tests.fe` and `src/hardening_tests.fe` checks a complete payout, premature release, wrong evidence, premature approval, stale nonce, double completion, early refund, duplicate active milestones, zero funding, unauthorized completion and approval, late refund, duplicate settlement, multiple sequential milestones, refunds, balance conservation, zero roles, absent specification/evidence, invalid payout addresses, and stale replay after reopening.
+The EVM test suite in `src/tests.fe`, `src/hardening_tests.fe` and `src/three_party_tests.fe` checks a complete payout, premature release, wrong evidence, premature approval, stale nonce, double completion, early refund, duplicate active milestones, zero funding, unauthorized completion and approval, late refund, duplicate settlement, multiple sequential milestones, refunds, balance conservation, zero roles, absent specification/evidence, invalid payout addresses, and stale replay after reopening.
 
-**Verified status:** The public GitHub Actions runner has compiled this code with Fe v26.5.0, passed **24/24 simulated EVM tests**, built ABI and bytecode, and enforced `fe fmt --check`. Verify the latest exact commit using [CI](https://github.com/Precision2025/tradeproof-fe-builders-challenge-2026/actions). See [DEMO.md](DEMO.md) for reproducible tests and [INVARIANTS.md](INVARIANTS.md) for the state-transition and threat-model checklist. The code is not audited or production-safe.
+**Verified status:** The public GitHub Actions runner has compiled this code with Fe v26.5.0, passed **27/27 simulated EVM tests**, built ABI and bytecode, and enforced `fe fmt --check`. Verify the latest exact commit using [CI](https://github.com/Precision2025/tradeproof-fe-builders-challenge-2026/actions). See [DEMO.md](DEMO.md) for reproducible tests and [INVARIANTS.md](INVARIANTS.md) for the state-transition and threat-model checklist. The code is not audited or production-safe.
 
 ## Fe-specific technical value
 
@@ -61,7 +61,7 @@ The EVM test suite in `src/tests.fe` and `src/hardening_tests.fe` checks a compl
 - ETH settlement forwards available gas and checks outcome after updating state. Reentrancy/adversarial recipient testing and security review remain required before production.
 - A worker can refuse to file completion, and a customer can refuse to approve. Dispute arbitration, expiry, multi-signature overrides, and payment release timeouts are out of scope.
 - No storage of photos, customer personal information, or signatures; only hashes are anchored on-chain. Apps must securely manage the off-chain originals.
-- Unit tests use one EVM actor for payer, worker, and customer due to test harness limitations; role-separation multi-actor tests are a required follow-up.
+- Older unit tests simulate payer, worker, and customer through one EVM actor. The new `three_party_tests.fe` integration tests deploy distinct worker and customer relay contracts, demonstrate successful payout across three separate on-chain callers, and reject role impersonation. This still does not replace audits, adversarial recipients, and EOAs signing independent transactions.
 - Audit requirements: ABI compatibility, compiler testing, gas limits, event layout, approval roles, and denial-of-service behavior.
 
 ## Contest disclosure

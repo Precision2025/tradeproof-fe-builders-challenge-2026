@@ -6,7 +6,7 @@
 - **License:** Apache-2.0 (OSI-approved)
 - **Fe version:** 26.5.0
 - **Manifest:** `fe.toml`
-- **Build/tests:** `fe fmt --check && fe test && fe build`; 24 EVM tests
+- **Build/tests:** `fe fmt --check && fe test && fe build`; 27 EVM tests
 - **Demo:** [DEMO.md](DEMO.md)
 - **Protocol invariants and limitations:** [INVARIANTS.md](INVARIANTS.md)
 - **CI:** https://github.com/Precision2025/tradeproof-fe-builders-challenge-2026/actions
@@ -20,7 +20,7 @@ TradeProof is an escrowed work-order approval protocol for service contractors. 
 
 ## Fe-specific technical highlight
 
-Typed `Wei`, explicit effects for `Ctx`/`Call`/`Log`, typed `StorageMap`, Solidity-selector message handlers, monotonic nonces and checks-effects-interactions settlement. The reproducible Fe 26.5.0 EVM suite includes 24 positive and adversarial tests.
+Typed `Wei`, explicit effects for `Ctx`/`Call`/`Log`, typed `StorageMap`, Solidity-selector message handlers, monotonic nonces and checks-effects-interactions settlement. The reproducible Fe 26.5.0 EVM suite includes 27 positive and adversarial tests.
 
 ## Reuse and AI declaration
 
@@ -28,4 +28,4 @@ Substantial development began November 11, 2026 within the contest window. No pr
 
 ## Security limits
 
-Prototype only, not audited or deployed. One active milestone per payer; no deadline, dispute mechanism, or verified off-chain evidence storage. Positive-path tests model all roles as one EVM actor; additional independent-role and security testing would be required before production.
+Prototype only, not audited or deployed. One active milestone per payer; no deadline, dispute mechanism, or verified off-chain evidence storage. Positive-path unit tests model all roles as one EVM actor; new on-chain integration tests exercise distinct payer/worker/customer callers through Fe relay contracts. Independent EOAs, adversarial external receivers and an expert security audit remain required before production.
