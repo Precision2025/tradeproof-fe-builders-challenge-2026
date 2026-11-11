@@ -41,9 +41,9 @@ fe test
 fe build
 ```
 
-The EVM test suite in `src/tests.fe` checks a complete payout, premature release, wrong evidence, premature approval, stale nonce, double completion, early refund, duplicate active milestones, zero funding, unauthorized completion and approval, late refund, and duplicate settlement.
+The EVM test suite in `src/tests.fe` and `src/hardening_tests.fe` checks a complete payout, premature release, wrong evidence, premature approval, stale nonce, double completion, early refund, duplicate active milestones, zero funding, unauthorized completion and approval, late refund, duplicate settlement, multiple sequential milestones, refunds, balance conservation, zero roles, absent specification/evidence, invalid payout addresses, and stale replay after reopening.
 
-**Verified status:** The public GitHub Actions runner has compiled this code with Fe v26.5.0, passed **13/13 simulated EVM tests**, built ABI and bytecode, and enforced `fe fmt --check`. Verify the latest exact commit using [CI](https://github.com/Precision2025/tradeproof-fe-builders-challenge-2026/actions). See [DEMO.md](DEMO.md) for reproducible tests. The code is not audited or production-safe.
+**Verified status:** The public GitHub Actions runner has compiled this code with Fe v26.5.0, passed **24/24 simulated EVM tests**, built ABI and bytecode, and enforced `fe fmt --check`. Verify the latest exact commit using [CI](https://github.com/Precision2025/tradeproof-fe-builders-challenge-2026/actions). See [DEMO.md](DEMO.md) for reproducible tests and [INVARIANTS.md](INVARIANTS.md) for the state-transition and threat-model checklist. The code is not audited or production-safe.
 
 ## Fe-specific technical value
 

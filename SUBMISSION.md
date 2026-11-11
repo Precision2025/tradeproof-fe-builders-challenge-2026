@@ -6,8 +6,9 @@
 - **License:** Apache-2.0 (OSI-approved)
 - **Fe version:** 26.5.0
 - **Manifest:** `fe.toml`
-- **Build/tests:** `fe fmt --check && fe test && fe build`; 13 EVM tests
+- **Build/tests:** `fe fmt --check && fe test && fe build`; 24 EVM tests
 - **Demo:** [DEMO.md](DEMO.md)
+- **Protocol invariants and limitations:** [INVARIANTS.md](INVARIANTS.md)
 - **CI:** https://github.com/Precision2025/tradeproof-fe-builders-challenge-2026/actions
 - **Exact judged commit:** record the latest *fully green* SHA when submitting.
 - **Private organizer link and submission code:** Stored only in the registration email and **never** in this repo.
@@ -19,7 +20,7 @@ TradeProof is an escrowed work-order approval protocol for service contractors. 
 
 ## Fe-specific technical highlight
 
-Typed `Wei`, explicit effects for `Ctx`/`Call`/`Log`, typed `StorageMap`, Solidity-selector message handlers, monotonic nonces and checks-effects-interactions settlement. The reproducible Fe 26.5.0 EVM suite includes 13 positive and adversarial tests.
+Typed `Wei`, explicit effects for `Ctx`/`Call`/`Log`, typed `StorageMap`, Solidity-selector message handlers, monotonic nonces and checks-effects-interactions settlement. The reproducible Fe 26.5.0 EVM suite includes 24 positive and adversarial tests.
 
 ## Reuse and AI declaration
 
