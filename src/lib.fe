@@ -10,10 +10,10 @@ msg TradeProofMsg {
     Complete { payer: Address, nonce: u256, evidence_hash: u256 } -> bool,
     #[selector = sol("approve(address,uint256,uint256)")]
     Approve { payer: Address, nonce: u256, evidence_hash: u256 } -> bool,
-    #[selector = sol("release(address,uint256)")]
-    Release { payer: Address, nonce: u256 } -> Wei,
-    #[selector = sol("refund(uint256)")]
-    Refund { nonce: u256 } -> Wei,
+    #[selector = sol("release(address,uint256,address)")]
+    Release { payer: Address, nonce: u256, to: Address } -> Wei,
+    #[selector = sol("refund(uint256,address)")]
+    Refund { nonce: u256, to: Address } -> Wei,
     #[selector = sol("statusOf(address)")]
     StatusOf { payer: Address } -> u256,
     #[selector = sol("nonceOf(address)")]
@@ -127,13 +127,15 @@ pub contract TradeProof uses (ctx: Ctx, call: mut Call, log: mut Log) {
             true
         }
 
-        Release { payer, nonce } -> Wei uses (
+        Release { payer, nonce, to } -> Wei uses (
             ctx, mut statuses, nonces, workers, mut amounts, mut call, mut log
         ) {
             assert!(nonces.get(key: payer) == nonce, "Stale milestone")
             assert!(statuses.get(key: payer) == 3, "Customer approval required")
+            assert!(ctx.caller() == workers.get(key: payer), "Only worker can release")
+            assert!(to != Address::new(0), "Payment destination missing")
             let amount = amounts.get(key: payer)
-            let recipient = workers.get(key: payer)
+            let recipient = to
             assert!(amount > Wei::zero(), "Nothing to release")
             // Effects before interaction: block reentrant double release.
             amounts.set(key: payer, value: Wei::zero())
@@ -145,18 +147,19 @@ pub contract TradeProof uses (ctx: Ctx, call: mut Call, log: mut Log) {
 
         // A payer may recover a milestone only before the worker completes it.
         // Disputed/completed work needs an off-chain resolution process.
-        Refund { nonce } -> Wei uses (
+        Refund { nonce, to } -> Wei uses (
             ctx, mut statuses, nonces, mut amounts, mut call, mut log
         ) {
             let payer = ctx.caller()
             assert!(nonces.get(key: payer) == nonce, "Stale milestone")
             assert!(statuses.get(key: payer) == 1, "Only an uncompleted milestone can refund")
+            assert!(to != Address::new(0), "Refund destination missing")
             let amount = amounts.get(key: payer)
             assert!(amount > Wei::zero(), "Nothing to refund")
             amounts.set(key: payer, value: Wei::zero())
             statuses.set(key: payer, value: 5)
-            assert!(call.send_value(addr: payer, gas: ctx.gas(), value: amount).success(), "Refund failed")
-            log.emit(MilestoneSettled { payer, nonce, recipient: payer, amount, refunded: true })
+            assert!(call.send_value(addr: to, gas: ctx.gas(), value: amount).success(), "Refund failed")
+            log.emit(MilestoneSettled { payer, nonce, recipient: to, amount, refunded: true })
             amount
         }
 

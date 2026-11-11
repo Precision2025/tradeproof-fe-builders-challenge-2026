@@ -2,7 +2,7 @@
 
 **Fe Builders Challenge 2026** · Prototype · Fe 26.5.0 · Apache-2.0
 
-> An escrowed work order in Fe: the technician reports a hashed completion receipt, the customer approves that exact receipt, and anyone may execute the already-authorized settlement. New milestones have monotonic nonces to reject stale messages.
+> An escrowed work order in Fe: the technician reports a hashed completion receipt, the customer approves that exact receipt, and only the nominated worker may execute settlement to a chosen payout address. New milestones have monotonic nonces to reject stale messages.
 
 ## Problem
 
@@ -13,8 +13,8 @@ In field-service jobs, the estimate, technician proof of completion, customer ac
 1. **Open**: Payer funds one milestone and commits to a pre-agreed specification hash, worker address, and customer address.
 2. **Complete**: Only the nominated worker may store a nonzero evidence hash for the current nonce.
 3. **Approve**: Only the nominated customer may approve that exact evidence hash.
-4. **Release**: After approval, anyone may trigger a transfer of the held ETH to the assigned worker; state and balance are zeroed *before* the external call.
-5. **Refund**: Before the worker marks the milestone complete, the payer may cancel and recover funds. Completed work intentionally has no unilateral refund path.
+4. **Release**: After approval, the nominated worker may trigger a transfer of the held ETH to their chosen payout address; state and balance are zeroed *before* the external call.
+5. **Refund**: Before the worker marks the milestone complete, the payer may cancel and recover funds to a chosen address. Completed work intentionally has no unilateral refund path.
 
 Each payer has at most one active milestone. Closed milestones can be followed by fresh ones. Each new milestone increments its nonce. Approval/release messages carrying an older nonce are rejected.
 
@@ -25,8 +25,8 @@ Each payer has at most one active milestone. Closed milestones can be followed b
 | `open(worker, customer, specification_hash)` payable | Payer | Funds next milestone, returns nonce |
 | `complete(payer, nonce, evidence_hash)` | Worker | Records receipt hash and advances to completed |
 | `approve(payer, nonce, evidence_hash)` | Customer | Checks exact receipt hash, authorizes settlement |
-| `release(payer, nonce)` | Anyone | Transfers funds to assigned worker |
-| `refund(nonce)` | Payer | Returns funds only if completion not filed |
+| `release(payer, nonce, to)` | Worker | Transfers funds to worker-selected address |
+| `refund(nonce, to)` | Payer | Returns funds to payer-selected address only if completion not filed |
 | `statusOf`, `nonceOf`, `amountOf`, `specificationOf`, `evidenceOf` | Anyone | Read-only inspection |
 
 `statusOf`: 0=never opened, 1=funded, 2=completed, 3=approved, 4=released, 5=refunded.
@@ -43,7 +43,7 @@ fe build
 
 The EVM test suite in `src/tests.fe` checks a complete payout, premature release, wrong evidence, premature approval, stale nonce, double completion, early refund, duplicate active milestones, zero funding, unauthorized completion and approval, late refund, and duplicate settlement.
 
-**Current validation:** These sources were prepared against the Fe 26.5.0 starter syntax, but the Fe compiler is not installed in this offline artifact environment. The test suite has **not yet been executed**. CI is provided, but until a public GitHub repository is created and Actions succeeds, this is *not a tested or contest-ready release*. The user should not put real money into it.
+**Current validation:** These sources were prepared against the Fe 26.5.0 starter syntax, but the Fe compiler is not installed in this offline artifact environment. GitHub Actions runs the Fe compiler on commits; the final test and format gates must pass before this becomes a contest-ready release. The user should not put real money into it.
 
 ## Fe-specific technical value
 
@@ -58,7 +58,7 @@ The EVM test suite in `src/tests.fe` checks a complete payout, premature release
 
 - **Prototype, not audited.** Must not handle live funds without expert review.
 - One active milestone per payer, so this is not a general multi-job invoicing ledger yet.
-- ETH settlement is to an EOA/recipient that accepts transfer via the Fe `send_value` call with gas argument `0`; contract recipients may fail. Use a safer transfer strategy before production.
+- ETH settlement forwards available gas and checks outcome after updating state. Reentrancy/adversarial recipient testing and security review remain required before production.
 - A worker can refuse to file completion, and a customer can refuse to approve. Dispute arbitration, expiry, multi-signature overrides, and payment release timeouts are out of scope.
 - No storage of photos, customer personal information, or signatures; only hashes are anchored on-chain. Apps must securely manage the off-chain originals.
 - Unit tests use one EVM actor for payer, worker, and customer due to test harness limitations; role-separation multi-actor tests are a required follow-up.

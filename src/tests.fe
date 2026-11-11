@@ -32,9 +32,10 @@ fn completed_and_approved_milestone_releases_escrow() uses (evm: mut Evm) {
     assert!(approve)
     let released: Wei = evm.call(
         addr: proof, gas: 200000, value: Wei::zero(),
-        message: TradeProofMsg::Release { payer, nonce },
+        message: TradeProofMsg::Release { payer, nonce, to: Address::new(0x1234) },
     )
     assert!(released == ether(1))
+    assert!(evm.balance(Address::new(0x1234)) == ether(1))
     let amount: Wei = evm.call(
         addr: proof, gas: 100000, value: Wei::zero(),
         message: TradeProofMsg::AmountOf { payer },
@@ -59,7 +60,7 @@ fn cannot_release_before_customer_approval() uses (evm: mut Evm) {
     )
     let _: Wei = evm.call(
         addr: proof, gas: 200000, value: Wei::zero(),
-        message: TradeProofMsg::Release { payer, nonce },
+        message: TradeProofMsg::Release { payer, nonce, to: Address::new(0x1234) },
     )
 }
 
@@ -147,9 +148,10 @@ fn payer_can_refund_uncompleted_milestone() uses (evm: mut Evm) {
     )
     let amount: Wei = evm.call(
         addr: proof, gas: 200000, value: Wei::zero(),
-        message: TradeProofMsg::Refund { nonce },
+        message: TradeProofMsg::Refund { nonce, to: Address::new(0x5678) },
     )
     assert!(amount == ether(1))
+    assert!(evm.balance(Address::new(0x5678)) == ether(1))
     let status: u256 = evm.call(
         addr: proof, gas: 100000, value: Wei::zero(),
         message: TradeProofMsg::StatusOf { payer },
@@ -239,7 +241,7 @@ fn cannot_refund_after_work_is_reported_complete() uses (evm: mut Evm) {
     )
     let _: Wei = evm.call(
         addr: proof, gas: 200000, value: Wei::zero(),
-        message: TradeProofMsg::Refund { nonce },
+        message: TradeProofMsg::Refund { nonce, to: Address::new(0x5678) },
     )
 }
 
@@ -263,10 +265,10 @@ fn cannot_release_a_settled_milestone_twice() uses (evm: mut Evm) {
     )
     let _: Wei = evm.call(
         addr: proof, gas: 200000, value: Wei::zero(),
-        message: TradeProofMsg::Release { payer, nonce },
+        message: TradeProofMsg::Release { payer, nonce, to: Address::new(0x1234) },
     )
     let _: Wei = evm.call(
         addr: proof, gas: 200000, value: Wei::zero(),
-        message: TradeProofMsg::Release { payer, nonce },
+        message: TradeProofMsg::Release { payer, nonce, to: Address::new(0x1234) },
     )
 }
