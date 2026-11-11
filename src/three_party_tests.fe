@@ -18,54 +18,80 @@ pub contract RoleRelay uses (call: mut Call) {
     init() {}
 
     recv RelayMsg {
-        RelayComplete { target, payer, nonce, evidence_hash } -> bool uses (mut call) {
+        RelayComplete { target, payer, nonce, evidence_hash } -> bool
+        uses (mut call)
+        {
             target.call(TradeProofMsg::Complete { payer, nonce, evidence_hash })
         }
-        RelayApprove { target, payer, nonce, evidence_hash } -> bool uses (mut call) {
+        RelayApprove { target, payer, nonce, evidence_hash } -> bool
+        uses (mut call)
+        {
             target.call(TradeProofMsg::Approve { payer, nonce, evidence_hash })
         }
-        RelayRelease { target, payer, nonce, to } -> Wei uses (mut call) {
+        RelayRelease { target, payer, nonce, to } -> Wei
+        uses (mut call)
+        {
             target.call(TradeProofMsg::Release { payer, nonce, to })
         }
     }
 }
 
 #[test(balance = 10_000_000_000_000_000_000)]
-fn three_distinct_contract_callers_can_complete_approve_and_settle() uses (evm: mut Evm) {
+fn three_distinct_contract_callers_can_complete_approve_and_settle()
+uses (evm: mut Evm)
+{
     let proof = evm.create2<TradeProof>(value: Wei::zero(), args: (), salt: 0)
     let worker = evm.create2<RoleRelay>(value: Wei::zero(), args: (), salt: 1)
     let customer = evm.create2<RoleRelay>(value: Wei::zero(), args: (), salt: 2)
     let payer = evm.address()
     assert!(payer != worker && payer != customer && worker != customer)
 
-    let nonce: u256 = evm.call(
-        addr: proof, gas: 500000, value: ether(1),
-        message: TradeProofMsg::Open { worker, customer, specification_hash: 1001 },
-    )
+    let nonce: u256 = evm
+        .call(
+            addr: proof,
+            gas: 500000,
+            value: ether(1),
+            message: TradeProofMsg::Open { worker, customer, specification_hash: 1001 },
+        )
     assert!(nonce == 1)
-    let complete: bool = evm.call(
-        addr: worker, gas: 500000, value: Wei::zero(),
-        message: RelayMsg::RelayComplete { target: proof, payer, nonce, evidence_hash: 2002 },
-    )
+    let complete: bool = evm
+        .call(
+            addr: worker,
+            gas: 500000,
+            value: Wei::zero(),
+            message: RelayMsg::RelayComplete { target: proof, payer, nonce, evidence_hash: 2002 },
+        )
     assert!(complete)
-    let approve: bool = evm.call(
-        addr: customer, gas: 500000, value: Wei::zero(),
-        message: RelayMsg::RelayApprove { target: proof, payer, nonce, evidence_hash: 2002 },
-    )
+    let approve: bool = evm
+        .call(
+            addr: customer,
+            gas: 500000,
+            value: Wei::zero(),
+            message: RelayMsg::RelayApprove { target: proof, payer, nonce, evidence_hash: 2002 },
+        )
     assert!(approve)
-    let paid: Wei = evm.call(
-        addr: worker, gas: 500000, value: Wei::zero(),
-        message: RelayMsg::RelayRelease {
-            target: proof, payer, nonce, to: Address::new(0x1234)
-        },
-    )
+    let paid: Wei = evm
+        .call(
+            addr: worker,
+            gas: 500000,
+            value: Wei::zero(),
+            message: RelayMsg::RelayRelease {
+                target: proof,
+                payer,
+                nonce,
+                to: Address::new(0x1234),
+            },
+        )
     assert!(paid == ether(1))
     assert!(evm.balance(Address::new(0x1234)) == ether(1))
     assert!(evm.balance(proof) == Wei::zero())
-    let status: u256 = evm.call(
-        addr: proof, gas: 100000, value: Wei::zero(),
-        message: TradeProofMsg::StatusOf { payer },
-    )
+    let status: u256 = evm
+        .call(
+            addr: proof,
+            gas: 100000,
+            value: Wei::zero(),
+            message: TradeProofMsg::StatusOf { payer },
+        )
     assert!(status == 4)
 }
 
@@ -75,42 +101,68 @@ fn worker_relay_cannot_impersonate_customer() uses (evm: mut Evm) {
     let worker = evm.create2<RoleRelay>(value: Wei::zero(), args: (), salt: 1)
     let customer = evm.create2<RoleRelay>(value: Wei::zero(), args: (), salt: 2)
     let payer = evm.address()
-    let nonce: u256 = evm.call(
-        addr: proof, gas: 500000, value: ether(1),
-        message: TradeProofMsg::Open { worker, customer, specification_hash: 1001 },
-    )
-    let _: bool = evm.call(
-        addr: worker, gas: 500000, value: Wei::zero(),
-        message: RelayMsg::RelayComplete { target: proof, payer, nonce, evidence_hash: 2002 },
-    )
-    let _: bool = evm.call(
-        addr: worker, gas: 500000, value: Wei::zero(),
-        message: RelayMsg::RelayApprove { target: proof, payer, nonce, evidence_hash: 2002 },
-    )
+    let nonce: u256 = evm
+        .call(
+            addr: proof,
+            gas: 500000,
+            value: ether(1),
+            message: TradeProofMsg::Open { worker, customer, specification_hash: 1001 },
+        )
+    let _: bool = evm
+        .call(
+            addr: worker,
+            gas: 500000,
+            value: Wei::zero(),
+            message: RelayMsg::RelayComplete { target: proof, payer, nonce, evidence_hash: 2002 },
+        )
+    let _: bool = evm
+        .call(
+            addr: worker,
+            gas: 500000,
+            value: Wei::zero(),
+            message: RelayMsg::RelayApprove { target: proof, payer, nonce, evidence_hash: 2002 },
+        )
 }
 
 #[test(should_revert, balance = 10_000_000_000_000_000_000)]
-fn customer_relay_cannot_impersonate_worker_at_settlement() uses (evm: mut Evm) {
+fn customer_relay_cannot_impersonate_worker_at_settlement()
+uses (evm: mut Evm)
+{
     let proof = evm.create2<TradeProof>(value: Wei::zero(), args: (), salt: 0)
     let worker = evm.create2<RoleRelay>(value: Wei::zero(), args: (), salt: 1)
     let customer = evm.create2<RoleRelay>(value: Wei::zero(), args: (), salt: 2)
     let payer = evm.address()
-    let nonce: u256 = evm.call(
-        addr: proof, gas: 500000, value: ether(1),
-        message: TradeProofMsg::Open { worker, customer, specification_hash: 1001 },
-    )
-    let _: bool = evm.call(
-        addr: worker, gas: 500000, value: Wei::zero(),
-        message: RelayMsg::RelayComplete { target: proof, payer, nonce, evidence_hash: 2002 },
-    )
-    let _: bool = evm.call(
-        addr: customer, gas: 500000, value: Wei::zero(),
-        message: RelayMsg::RelayApprove { target: proof, payer, nonce, evidence_hash: 2002 },
-    )
-    let _: Wei = evm.call(
-        addr: customer, gas: 500000, value: Wei::zero(),
-        message: RelayMsg::RelayRelease {
-            target: proof, payer, nonce, to: Address::new(0x1234)
-        },
-    )
+    let nonce: u256 = evm
+        .call(
+            addr: proof,
+            gas: 500000,
+            value: ether(1),
+            message: TradeProofMsg::Open { worker, customer, specification_hash: 1001 },
+        )
+    let _: bool = evm
+        .call(
+            addr: worker,
+            gas: 500000,
+            value: Wei::zero(),
+            message: RelayMsg::RelayComplete { target: proof, payer, nonce, evidence_hash: 2002 },
+        )
+    let _: bool = evm
+        .call(
+            addr: customer,
+            gas: 500000,
+            value: Wei::zero(),
+            message: RelayMsg::RelayApprove { target: proof, payer, nonce, evidence_hash: 2002 },
+        )
+    let _: Wei = evm
+        .call(
+            addr: customer,
+            gas: 500000,
+            value: Wei::zero(),
+            message: RelayMsg::RelayRelease {
+                target: proof,
+                payer,
+                nonce,
+                to: Address::new(0x1234),
+            },
+        )
 }
