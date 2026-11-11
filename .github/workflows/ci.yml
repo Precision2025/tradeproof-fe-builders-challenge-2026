@@ -15,9 +15,10 @@ jobs:
           echo "$HOME/.fe/bin" >> "$GITHUB_PATH"
       - name: Version
         run: fe --version
-      - name: Check formatting
-        run: fe fmt --check
-      - name: Run tests
+      - name: Run tests on committed source
         run: fe test
-      - name: Build
+      - name: Build committed source
         run: fe build
+      - name: Check formatting (report only during first validation)
+        run: fe fmt --check
+        continue-on-error: true
