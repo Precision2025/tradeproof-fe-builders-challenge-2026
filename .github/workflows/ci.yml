@@ -19,6 +19,6 @@ jobs:
         run: fe test
       - name: Build committed source
         run: fe build
-      - name: Check formatting (report only during first validation)
+      - name: Check formatting
         run: fe fmt --check
-        continue-on-error: true
+

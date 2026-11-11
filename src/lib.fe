@@ -79,13 +79,25 @@ pub contract TradeProof uses (ctx: Ctx, call: mut Call, log: mut Log) {
 
     recv TradeProofMsg {
         #[payable]
-        Open { worker, customer, specification_hash } -> u256 uses (
-            ctx, mut statuses, mut nonces, mut workers,
-            mut customers, mut specifications, mut evidence, mut amounts, mut log
-        ) {
+        Open { worker, customer, specification_hash } -> u256
+        uses (
+            ctx,
+            mut statuses,
+            mut nonces,
+            mut workers,
+            mut customers,
+            mut specifications,
+            mut evidence,
+            mut amounts,
+            mut log,
+        )
+        {
             let payer = ctx.caller()
             let previous = statuses.get(key: payer)
-            assert!(previous == 0 || previous == 4 || previous == 5, "Active milestone exists")
+            assert!(
+                previous == 0 || previous == 4 || previous == 5,
+                "Active milestone exists",
+            )
             assert!(ctx.value() > Wei::zero(), "Milestone must be funded")
             assert!(worker != Address::new(0), "Worker missing")
             assert!(customer != Address::new(0), "Customer missing")
@@ -98,16 +110,28 @@ pub contract TradeProof uses (ctx: Ctx, call: mut Call, log: mut Log) {
             evidence.set(key: payer, value: 0)
             amounts.set(key: payer, value: ctx.value())
             statuses.set(key: payer, value: 1)
-            log.emit(MilestoneOpened { payer, nonce, worker, customer, amount: ctx.value(), specification_hash })
+            log.emit(
+                MilestoneOpened {
+                    payer,
+                    nonce,
+                    worker,
+                    customer,
+                    amount: ctx.value(),
+                    specification_hash,
+                },
+            )
             nonce
         }
 
-        Complete { payer, nonce, evidence_hash } -> bool uses (
-            ctx, mut statuses, nonces, workers, mut evidence, mut log
-        ) {
+        Complete { payer, nonce, evidence_hash } -> bool
+        uses (ctx, mut statuses, nonces, workers, mut evidence, mut log)
+        {
             assert!(nonces.get(key: payer) == nonce, "Stale milestone")
             assert!(statuses.get(key: payer) == 1, "Not funded")
-            assert!(ctx.caller() == workers.get(key: payer), "Only worker can complete")
+            assert!(
+                ctx.caller() == workers.get(key: payer),
+                "Only worker can complete",
+            )
             assert!(evidence_hash != 0, "Evidence missing")
             evidence.set(key: payer, value: evidence_hash)
             statuses.set(key: payer, value: 2)
@@ -115,24 +139,42 @@ pub contract TradeProof uses (ctx: Ctx, call: mut Call, log: mut Log) {
             true
         }
 
-        Approve { payer, nonce, evidence_hash } -> bool uses (
-            ctx, mut statuses, nonces, customers, evidence, mut log
-        ) {
+        Approve { payer, nonce, evidence_hash } -> bool
+        uses (ctx, mut statuses, nonces, customers, evidence, mut log)
+        {
             assert!(nonces.get(key: payer) == nonce, "Stale milestone")
             assert!(statuses.get(key: payer) == 2, "Not completed")
-            assert!(ctx.caller() == customers.get(key: payer), "Only customer can approve")
-            assert!(evidence.get(key: payer) == evidence_hash, "Evidence mismatch")
+            assert!(
+                ctx.caller() == customers.get(key: payer),
+                "Only customer can approve",
+            )
+            assert!(
+                evidence.get(key: payer) == evidence_hash,
+                "Evidence mismatch",
+            )
             statuses.set(key: payer, value: 3)
             log.emit(MilestoneApproved { payer, nonce, evidence_hash })
             true
         }
 
         Release { payer, nonce, to } -> Wei uses (
-            ctx, mut statuses, nonces, workers, mut amounts, mut call, mut log
+            ctx,
+            mut statuses,
+            nonces,
+            workers,
+            mut amounts,
+            mut call,
+            mut log,
         ) {
             assert!(nonces.get(key: payer) == nonce, "Stale milestone")
-            assert!(statuses.get(key: payer) == 3, "Customer approval required")
-            assert!(ctx.caller() == workers.get(key: payer), "Only worker can release")
+            assert!(
+                statuses.get(key: payer) == 3,
+                "Customer approval required",
+            )
+            assert!(
+                ctx.caller() == workers.get(key: payer),
+                "Only worker can release",
+            )
             assert!(to != Address::new(0), "Payment destination missing")
             let amount = amounts.get(key: payer)
             let recipient = to
@@ -140,33 +182,61 @@ pub contract TradeProof uses (ctx: Ctx, call: mut Call, log: mut Log) {
             // Effects before interaction: block reentrant double release.
             amounts.set(key: payer, value: Wei::zero())
             statuses.set(key: payer, value: 4)
-            assert!(call.send_value(addr: recipient, gas: ctx.gas(), value: amount).success(), "Payment failed")
-            log.emit(MilestoneSettled { payer, nonce, recipient, amount, refunded: false })
+            assert!(
+                call.send_value(addr: recipient, gas: ctx.gas(), value: amount).success(),
+                "Payment failed",
+            )
+            log.emit(
+                MilestoneSettled { payer, nonce, recipient, amount, refunded: false },
+            )
             amount
         }
 
         // A payer may recover a milestone only before the worker completes it.
         // Disputed/completed work needs an off-chain resolution process.
         Refund { nonce, to } -> Wei uses (
-            ctx, mut statuses, nonces, mut amounts, mut call, mut log
+            ctx,
+            mut statuses,
+            nonces,
+            mut amounts,
+            mut call,
+            mut log,
         ) {
             let payer = ctx.caller()
             assert!(nonces.get(key: payer) == nonce, "Stale milestone")
-            assert!(statuses.get(key: payer) == 1, "Only an uncompleted milestone can refund")
+            assert!(
+                statuses.get(key: payer) == 1,
+                "Only an uncompleted milestone can refund",
+            )
             assert!(to != Address::new(0), "Refund destination missing")
             let amount = amounts.get(key: payer)
             assert!(amount > Wei::zero(), "Nothing to refund")
             amounts.set(key: payer, value: Wei::zero())
             statuses.set(key: payer, value: 5)
-            assert!(call.send_value(addr: to, gas: ctx.gas(), value: amount).success(), "Refund failed")
-            log.emit(MilestoneSettled { payer, nonce, recipient: to, amount, refunded: true })
+            assert!(
+                call.send_value(addr: to, gas: ctx.gas(), value: amount).success(),
+                "Refund failed",
+            )
+            log.emit(
+                MilestoneSettled { payer, nonce, recipient: to, amount, refunded: true },
+            )
             amount
         }
 
-        StatusOf { payer } -> u256 uses statuses { statuses.get(key: payer) }
-        NonceOf { payer } -> u256 uses nonces { nonces.get(key: payer) }
-        AmountOf { payer } -> Wei uses amounts { amounts.get(key: payer) }
-        SpecificationOf { payer } -> u256 uses specifications { specifications.get(key: payer) }
-        EvidenceOf { payer } -> u256 uses evidence { evidence.get(key: payer) }
+        StatusOf { payer } -> u256 uses statuses {
+            statuses.get(key: payer)
+        }
+        NonceOf { payer } -> u256 uses nonces {
+            nonces.get(key: payer)
+        }
+        AmountOf { payer } -> Wei uses amounts {
+            amounts.get(key: payer)
+        }
+        SpecificationOf { payer } -> u256 uses specifications {
+            specifications.get(key: payer)
+        }
+        EvidenceOf { payer } -> u256 uses evidence {
+            evidence.get(key: payer)
+        }
     }
 }
